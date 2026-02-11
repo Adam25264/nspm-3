@@ -1,0 +1,3495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NSPM SmartClock - Staff Attendance</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <!-- Paystack Inline JS -->
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase Configuration -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBN0KexNQkEegTvAUA815xJrBqPUa45SOk",
+            authDomain: "smarttendance-a355b.firebaseapp.com",
+            databaseURL: "https://smarttendance-a355b-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "smarttendance-a355b",
+            storageBucket: "smarttendance-a355b.firebasestorage.app",
+            messagingSenderId: "448589697375",
+            appId: "1:448589697375:web:d5b02d378ba9746a68a6ea"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        console.log("Firebase initialized successfully!");
+    </script>
+    
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --primary: #0056b3;
+            --secondary: #007bff;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --success: #28a745;
+            --dark: #121212;
+            --darker: #0a0a0a;
+            --light: #f5f5f5;
+            --card-bg: #1a1a1a;
+            --card-border: #333;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        
+        body {
+            background: var(--dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-mode {
+            --primary: #0056b3;
+            --secondary: #007bff;
+            --danger: #dc3545;
+            --success: #28a745;
+            --warning: #ffc107;
+            --dark: #f8fafc;
+            --darker: #e2e8f0;
+            --light: #ffffff;
+            --card-bg: #ffffff;
+            --card-border: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Authentication Styles */
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+        }
+        
+        body.light-mode .auth-container {
+            background: linear-gradient(135deg, #e0e0e0 0%, #f0f0f0 100%);
+        }
+        
+        .auth-box {
+            background: #2a2a2a;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        
+        body.light-mode .auth-box {
+            background: #ffffff;
+            border: 1px solid #ddd;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .auth-header {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        body.light-mode .auth-header {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+            color: white;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .auth-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .auth-header p {
+            opacity: 0.9;
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        body.light-mode .auth-header p {
+            color: #ffffff;
+        }
+        
+        .auth-body {
+            padding: 30px 25px;
+        }
+        
+        /* Staff Badge */
+        .staff-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 12px;
+            gap: 10px;
+            border: 1px solid #007bff;
+        }
+        
+        body.light-mode .staff-badge {
+            background: #e0e0e0;
+            border: 1px solid #007bff;
+        }
+        
+        .staff-badge span {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        /* Form Toggle */
+        .form-toggle {
+            display: flex;
+            margin-bottom: 25px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            padding: 5px;
+        }
+        
+        body.light-mode .form-toggle {
+            background: #e0e0e0;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #cccccc;
+        }
+        
+        body.light-mode .toggle-btn {
+            color: #666666;
+        }
+        
+        .toggle-btn.active {
+            background: #007bff;
+            color: #ffffff;
+        }
+        
+        body.light-mode .toggle-btn.active {
+            background: #007bff;
+            color: #ffffff;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        body.light-mode .form-group label {
+            color: #666666;
+        }
+        
+        /* INPUT FIELDS */
+        .input-with-icon {
+            position: relative;
+        }
+        
+        .input-with-icon input, .input-with-icon select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #1a1a1a;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        body.light-mode .input-with-icon input, 
+        body.light-mode .input-with-icon select {
+            border: 2px solid #ddd;
+            background: #f9f9f9;
+            color: #333333;
+        }
+        
+        .input-with-icon input:focus, .input-with-icon select:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+        
+        body.light-mode .input-with-icon input:focus, 
+        body.light-mode .input-with-icon select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+        }
+        
+        .input-with-icon.error input {
+            border-color: #dc3545;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        /* Password Strength Indicator */
+        .password-strength-container {
+            margin-top: 10px;
+        }
+        
+        .strength-meter {
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        
+        body.light-mode .strength-meter {
+            background: #ddd;
+        }
+        
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .strength-fill.weak {
+            background: #dc3545;
+            width: 25%;
+        }
+        
+        .strength-fill.fair {
+            background: #ffc107;
+            width: 50%;
+        }
+        
+        .strength-fill.good {
+            background: #17a2b8;
+            width: 75%;
+        }
+        
+        .strength-fill.strong {
+            background: #28a745;
+            width: 100%;
+        }
+        
+        .strength-text {
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .strength-label {
+            color: #888;
+        }
+        
+        body.light-mode .strength-label {
+            color: #666;
+        }
+        
+        .strength-value {
+            font-weight: 600;
+        }
+        
+        .strength-requirements {
+            font-size: 11px;
+            color: #888;
+        }
+        
+        body.light-mode .strength-requirements {
+            color: #666;
+        }
+        
+        .requirement {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        
+        .requirement span {
+            margin-left: 6px;
+        }
+        
+        .requirement.valid {
+            color: #28a745;
+        }
+        
+        .requirement.invalid {
+            color: #888;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 15px;
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        body.light-mode .btn {
+            background: #007bff;
+            color: #ffffff;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        body.light-mode .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .terms {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        body.light-mode .terms {
+            color: #666666;
+        }
+        
+        .terms input {
+            margin-right: 10px;
+            margin-top: 3px;
+        }
+        
+        .terms a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        body.light-mode .terms a {
+            color: #007bff;
+        }
+        
+        .forgot-password {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .forgot-password a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        body.light-mode .forgot-password a {
+            color: #007bff;
+        }
+        
+        /* Clear Cache Link */
+        .clear-cache-link {
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .clear-cache-link a {
+            color: #ffc107;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        
+        /* Main App Styles */
+        .app-container {
+            display: none;
+            max-width: 100%;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+        
+        /* Enhanced Header for Mobile */
+        .header {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--card-bg) 100%);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .header-content {
+            flex: 1;
+            text-align: left;
+        }
+        
+        .header h1 {
+            color: var(--primary);
+            font-size: 20px;
+            margin-bottom: 8px;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Staff info visibility */
+        .staff-info {
+            font-size: 13px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: flex-start;
+        }
+        
+        .staff-info span {
+            display: block;
+            line-height: 1.3;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+        }
+        
+        /* Ensure visibility in dark mode */
+        body:not(.light-mode) .staff-info span {
+            color: #ffffff !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+        
+        /* Ensure visibility in light mode */
+        body.light-mode .staff-info span {
+            color: #1a1a1a !important;
+            text-shadow: 0 1px 1px rgba(255,255,255,0.5);
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .theme-toggle, .settings-toggle, .new-department-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-secondary);
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+        }
+        
+        .theme-toggle:hover, .settings-toggle:hover, .new-department-toggle:hover {
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        /* Enhanced Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            padding: 8px 5px;
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 5px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 10px;
+            min-height: 50px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(0, 123, 255, 0.1);
+        }
+        
+        .nav-item i {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item .nav-label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+        
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            padding: 15px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Improved Scanner Section for Mobile */
+        .scanner-section {
+            text-align: center;
+        }
+        
+        .scanner-box {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 2px solid var(--card-border);
+            box-shadow: var(--shadow);
+        }
+        
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 300px;
+            height: 280px;
+            margin: 0 auto 15px;
+            border: 3px solid var(--card-border);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            transition: all 0.3s ease;
+        }
+        
+        .camera-container.camera-active {
+            border-color: var(--primary);
+        }
+        
+        .camera-container.camera-dark {
+            border-color: var(--card-border);
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: var(--primary);
+            animation: scan 2s infinite;
+            box-shadow: 0 0 10px var(--primary);
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+        
+        /* Dark Camera Overlay */
+        .camera-dark-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            z-index: 5;
+            border-radius: 10px;
+        }
+        
+        .dark-camera-content {
+            max-width: 80%;
+        }
+        
+        .dark-camera-content i {
+            font-size: 48px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+        
+        .dark-camera-content h3 {
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+        }
+        
+        .dark-camera-content p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .scanner-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+        }
+        
+        .btn-danger {
+            background: var(--danger);
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+        }
+        
+        .btn-small {
+            padding: 10px 12px;
+            font-size: 13px;
+            width: auto;
+            margin: 2px;
+        }
+        
+        /* Clock In/Out Info Banner */
+        .clock-banner {
+            background: linear-gradient(135deg, #0056b3 0%, #007bff 50%, #0056b3 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 12px 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            border-left: 2.5px solid rgba(255, 255, 255, 0.7);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .clock-banner.expired {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 50%, #bd2130 100%);
+        }
+        
+        .clock-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .banner-content {
+            width: 100%;
+        }
+        
+        .banner-content h3 {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .banner-content p {
+            font-size: 13px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        /* History Header */
+        .history-header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .history-title-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .history-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-select {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            border-radius: 8px;
+            background: var(--darker);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+            font-size: 13px;
+        }
+        
+        /* Enhanced Summary Table for Mobile */
+        .summary-section {
+            margin-bottom: 20px;
+        }
+        
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            background: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            font-size: 13px;
+        }
+        
+        .summary-table th, .summary-table td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+        }
+        
+        .summary-table th:last-child, .summary-table td:last-child {
+            border-right: none;
+        }
+        
+        .summary-table th {
+            background: var(--darker);
+            color: var(--text-primary);
+            font-weight: bold;
+        }
+        
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .summary-table tr:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+        
+        /* Enhanced Tabular Attendance History for Mobile */
+        .attendance-table-container {
+            margin-top: 15px;
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .attendance-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            font-size: 12px;
+            min-width: 500px;
+        }
+        
+        .attendance-table th {
+            background: var(--darker);
+            color: var(--text-primary);
+            font-weight: bold;
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 2px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .attendance-table th:last-child {
+            border-right: none;
+        }
+        
+        .attendance-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+            color: var(--text-secondary);
+        }
+        
+        .attendance-table td:last-child {
+            border-right: none;
+        }
+        
+        .attendance-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .attendance-table tr:hover {
+            background: rgba(0, 123, 255, 0.05);
+        }
+        
+        .status-present {
+            color: var(--success);
+            font-weight: bold;
+        }
+        
+        .status-absent {
+            color: var(--danger);
+            font-weight: bold;
+        }
+        
+        .action-cell {
+            text-align: center;
+        }
+        
+        .delete-record-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+        
+        .delete-record-btn:hover {
+            background: #bd2130;
+            transform: scale(1.05);
+        }
+        
+        /* Enhanced Subscription Section for Mobile */
+        .subscription-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            border: 2px solid var(--primary);
+            box-shadow: var(--shadow);
+        }
+        
+        .subscription-info {
+            margin: 12px 0;
+        }
+        
+        .subscription-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 14px;
+        }
+        
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .payment-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .payment-option:hover {
+            background: rgba(0, 123, 255, 0.1);
+            border-color: var(--primary);
+        }
+        
+        .payment-option.free-trial {
+            border-left: 4px solid #28a745;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(33, 136, 56, 0.05) 100%);
+        }
+        
+        .payment-option.free-trial .payment-icon {
+            color: #28a745;
+        }
+        
+        .payment-option.free-trial:hover {
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.15) 0%, rgba(33, 136, 56, 0.1) 100%);
+            border-color: #28a745;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+        
+        .payment-icon {
+            margin-right: 12px;
+            font-size: 20px;
+            color: var(--primary);
+        }
+        
+        /* Enhanced Settings Section for Mobile */
+        .settings-section {
+            text-align: left;
+        }
+        
+        .settings-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            box-shadow: var(--shadow);
+        }
+        
+        .settings-group {
+            margin-bottom: 20px;
+        }
+        
+        .settings-group h3 {
+            color: var(--primary);
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+        
+        .language-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .language-option {
+            padding: 12px;
+            background: var(--darker);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .language-option.active {
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .language-option:hover {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        /* Enhanced Results Modal for Mobile */
+        .result-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+        
+        .result-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid var(--primary);
+            max-width: 350px;
+            width: 100%;
+            box-shadow: var(--shadow);
+        }
+        
+        .result-success {
+            border-color: var(--success);
+        }
+        
+        .result-error {
+            border-color: var(--danger);
+        }
+        
+        .result-icon {
+            font-size: 42px;
+            margin-bottom: 12px;
+        }
+        
+        /* Enhanced Camera Permission for Mobile */
+        .camera-permission {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        
+        .camera-permission i {
+            font-size: 42px;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+        
+        .enable-camera-text {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 12px 0;
+            line-height: 1.2;
+            text-align: center;
+        }
+        
+        .enable-camera-text span {
+            display: block;
+            color: var(--text-primary);
+        }
+        
+        .camera-instruction {
+            font-size: 13px;
+            margin: 8px 0 15px;
+            color: var(--text-secondary);
+        }
+        
+        /* Payment Form Styles */
+        .payment-form {
+            margin-top: 15px;
+        }
+        
+        /* Paystack Button */
+        .paystack-button {
+            background: #00A859;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .paystack-button:hover {
+            background: #008F4C;
+            transform: translateY(-2px);
+        }
+        
+        /* New Department Modal */
+        .new-department-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 15px;
+        }
+        
+        .new-department-content {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid var(--primary);
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--card-border);
+            border-radius: 10px;
+            background: var(--darker);
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .form-actions .btn {
+            flex: 1;
+            margin: 0;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            color: white;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* NSPM Icon Styles */
+        .nsm-icon {
+            font-size: 1.2em;
+            color: inherit;
+        }
+
+        .nsm-icon.header-icon {
+            font-size: 1.5em;
+        }
+
+        .nsm-icon.small {
+            font-size: 0.9em;
+        }
+
+        .nsm-icon.large {
+            font-size: 2em;
+        }
+
+        .nsm-icon.primary {
+            color: var(--primary);
+        }
+
+        .nsm-icon.secondary {
+            color: var(--secondary);
+        }
+
+        /* Logout Button in Settings */
+        .logout-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .logout-btn-settings {
+            background: var(--danger);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .logout-btn-settings:hover {
+            background: #bd2130;
+            transform: translateY(-2px);
+        }
+
+        /* Scanner disabled overlay */
+        .scanner-disabled {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            z-index: 10;
+            border-radius: 10px;
+        }
+
+        .scanner-disabled i {
+            font-size: 42px;
+            color: var(--warning);
+            margin-bottom: 15px;
+        }
+
+        .scanner-disabled h3 {
+            margin-bottom: 10px;
+            color: var(--warning);
+        }
+
+        .scanner-disabled p {
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        /* Clock In/Out Status */
+        .clock-status {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            padding: 10px;
+            background: var(--darker);
+            border-radius: 10px;
+        }
+
+        .clock-status-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .clock-status-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .clock-status-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .clock-status-value.clocked-in {
+            color: var(--success);
+        }
+
+        .clock-status-value.clocked-out {
+            color: var(--warning);
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 18px; }
+            .camera-container { height: 250px; max-width: 100%; }
+            .history-filters { flex-direction: column; }
+            .filter-select { min-width: 100%; }
+            .auth-header h1 { font-size: 24px; }
+            .auth-body { padding: 20px 15px; }
+            .staff-info { font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Section -->
+    <div id="authSection" class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1><i class="fas fa-building nsm-icon"></i> <span>NSPM SmartClock</span></h1>
+                <p id="authSubtitle">Staff Attendance Portal</p>
+            </div>
+            
+            <div class="auth-body">
+                <!-- Staff Badge -->
+                <div class="staff-badge">
+                    <i class="fas fa-user-tie nsm-icon"></i>
+                    <span id="staffPortalText">Staff Portal</span>
+                </div>
+                
+                <div class="form-toggle">
+                    <button class="toggle-btn active" id="loginToggle">Login</button>
+                    <button class="toggle-btn" id="signupToggle">Register</button>
+                </div>
+                
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form active">
+                    <div class="form-group">
+                        <label for="loginId">Staff ID</label>
+                        <div class="input-with-icon">
+                            <input type="text" id="loginId" placeholder="Enter your staff ID" required>
+                        </div>
+                        <div class="error-message" id="loginIdError">Please enter a valid staff ID</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <div class="input-with-icon">
+                            <input type="password" id="loginPassword" placeholder="Enter your password" required>
+                        </div>
+                        <div class="error-message" id="loginPasswordError">Please enter your password</div>
+                    </div>
+                    
+                    <div class="terms">
+                        <input type="checkbox" id="rememberMe">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="loginButton">
+                        <i class="fas fa-sign-in-alt nsm-icon small"></i> Login to Portal
+                    </button>
+
+                    <div class="forgot-password">
+                        <a href="#" id="forgotPasswordLink">Forgot your password?</a>
+                    </div>
+                    
+                    <!-- Clear Cache Link -->
+                    <div class="clear-cache-link" id="clearCacheLinkContainer">
+                        <a href="#" id="clearCacheLink">Clear cache and reset login</a>
+                    </div>
+                </form>
+                
+                <!-- Signup Form -->
+                <form id="signupForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <div class="input-with-icon">
+                            <input type="text" id="fullName" placeholder="Enter your full name" required>
+                        </div>
+                        <div class="error-message" id="fullNameError">Please enter your full name</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Official Email</label>
+                        <div class="input-with-icon">
+                            <input type="email" id="email" placeholder="Enter your official email" required>
+                        </div>
+                        <div class="error-message" id="emailError">Please enter a valid email</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="userId">Staff ID</label>
+                        <div class="input-with-icon">
+                            <input type="text" id="userId" placeholder="e.g., NSPM/HR/001" required>
+                        </div>
+                        <div class="error-message" id="userIdError">Please enter a valid staff ID</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="department">Department</label>
+                        <div class="input-with-icon">
+                            <select id="department" required>
+                                <option value="">Select Department</option>
+                                <option value="HR">Human Resources</option>
+                                <option value="IT">Information Technology</option>
+                                <option value="FIN">Finance</option>
+                                <option value="OPS">Operations</option>
+                                <option value="SEC">Security</option>
+                                <option value="ADMIN">Administration</option>
+                                <option value="PROD">Production</option>
+                                <option value="QA">Quality Assurance</option>
+                                <option value="LOG">Logistics</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div class="error-message" id="departmentError">Please select your department</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="designation">Designation</label>
+                        <div class="input-with-icon">
+                            <input type="text" id="designation" placeholder="Enter your designation" required>
+                        </div>
+                        <div class="error-message" id="designationError">Please enter your designation</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="signupPassword">Password</label>
+                        <div class="input-with-icon">
+                            <input type="password" id="signupPassword" placeholder="Create a strong password" required>
+                        </div>
+                        
+                        <!-- Password Strength Indicator -->
+                        <div class="password-strength-container">
+                            <div class="strength-meter">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <div class="strength-text">
+                                <span class="strength-label" id="strengthLabel">Password strength</span>
+                                <span class="strength-value" id="strengthValue"></span>
+                            </div>
+                            <div class="strength-requirements">
+                                <div class="requirement invalid" id="reqLength">
+                                    <span>✓ At least 8 characters</span>
+                                </div>
+                                <div class="requirement invalid" id="reqUppercase">
+                                    <span>✓ Uppercase letter</span>
+                                </div>
+                                <div class="requirement invalid" id="reqLowercase">
+                                    <span>✓ Lowercase letter</span>
+                                </div>
+                                <div class="requirement invalid" id="reqNumber">
+                                    <span>✓ Number</span>
+                                </div>
+                                <div class="requirement invalid" id="reqSymbol">
+                                    <span>✓ Symbol</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="error-message" id="signupPasswordError">Password must meet all requirements</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <div class="input-with-icon">
+                            <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+                        </div>
+                        <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
+                    </div>
+                    
+                    <div class="terms">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <label for="agreeTerms">I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></label>
+                    </div>
+                    <div class="error-message" id="termsError">You must agree to the terms and conditions</div>
+                    
+                    <button type="submit" class="btn" id="signupButton">
+                        <i class="fas fa-user-plus nsm-icon small"></i> Register Staff Account
+                    </button>
+                </form>
+
+                <!-- Forgot Password Form -->
+                <form id="forgotPasswordForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="forgotEmail">Official Email</label>
+                        <div class="input-with-icon">
+                            <input type="email" id="forgotEmail" placeholder="Enter your official email" required>
+                        </div>
+                        <div class="error-message" id="forgotEmailError">Please enter a valid email</div>
+                    </div>
+                    
+                    <button type="submit" class="btn" id="resetPasswordButton">
+                        <i class="fas fa-key nsm-icon small"></i> Send Reset Instructions
+                    </button>
+
+                    <div class="forgot-password">
+                        <a href="#" id="backToLoginLink">Back to Login</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container" id="mainApp">
+        <!-- Enhanced Header for Mobile -->
+        <div class="header">
+            <div class="header-content">
+                <h1 id="headerTitle"><i class="fas fa-building nsm-icon header-icon"></i> NSPM SmartClock</h1>
+                <!-- Staff info -->
+                <div class="staff-info">
+                    <span id="staffName">John Doe</span>
+                    <span id="staffId">NSPM/HR/001</span>
+                    <span id="staffDepartment">Human Resources</span>
+                    <span id="staffDesignation">HR Manager</span>
+                </div>
+            </div>
+            <div class="header-controls">
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Clock In/Out Status Banner -->
+        <div id="clockBanner" class="clock-banner" style="display: none;">
+            <div class="banner-content">
+                <h3><i class="fas fa-clock nsm-icon"></i> <span id="clockStatusTitle">Clock In Required</span></h3>
+                <p><span id="clockStatusMessage">Please clock in to start tracking your attendance</span></p>
+                
+                <!-- Clock Status Display -->
+                <div class="clock-status">
+                    <div class="clock-status-item">
+                        <div class="clock-status-label">Today's Status</div>
+                        <div id="todayStatus" class="clock-status-value">Not Clocked In</div>
+                    </div>
+                    <div class="clock-status-item">
+                        <div class="clock-status-label">Last Clock In</div>
+                        <div id="lastClockIn" class="clock-status-value">--:--</div>
+                    </div>
+                    <div class="clock-status-item">
+                        <div class="clock-status-label">Last Clock Out</div>
+                        <div id="lastClockOut" class="clock-status-value">--:--</div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-small" onclick="switchTab('payment')" style="margin-top: 10px;">
+                <i class="fas fa-university nsm-icon small"></i> Activate Service
+            </button>
+        </div>
+        
+        <!-- Scanner Tab -->
+        <div id="scanner" class="tab-content active">
+            <div class="scanner-section">
+                <h2><i class="fas fa-qrcode nsm-icon"></i> Scan QR Code</h2>
+                <p style="color: var(--text-secondary); margin: 8px 0 12px;">Point your camera at the department QR code to clock in/out</p>
+                
+                <div class="scanner-box">
+                    <div class="camera-container camera-dark">
+                        <!-- Dark overlay when camera is not ready -->
+                        <div id="cameraDarkOverlay" class="camera-dark-overlay" style="display: flex;">
+                            <div class="dark-camera-content">
+                                <i class="fas fa-video-slash"></i>
+                                <h3>Camera Not Ready</h3>
+                                <p>Enable camera to scan QR codes</p>
+                            </div>
+                        </div>
+                        
+                        <video id="video" playsinline autoplay style="display: none;"></video>
+                        <div class="scan-overlay">
+                            <div class="scan-line"></div>
+                        </div>
+                        
+                        <!-- Scanner disabled overlay -->
+                        <div id="scannerDisabled" class="scanner-disabled" style="display: none;">
+                            <i class="fas fa-lock"></i>
+                            <h3 id="scannerDisabledTitle">Scanner Locked</h3>
+                            <p id="scannerDisabledMessage">Please activate service to use the QR scanner.</p>
+                            <button class="btn btn-warning" onclick="switchTab('payment')">
+                                <i class="fas fa-university nsm-icon small"></i> Activate Now
+                            </button>
+                        </div>
+                        <div id="cameraPermission" class="camera-permission" style="display: none;">
+                            <i class="fas fa-camera"></i>
+                            <div class="enable-camera-text">
+                                <span>Enable</span>
+                                <span>Camera</span>
+                            </div>
+                            <p class="camera-instruction">Camera access is required to scan QR codes</p>
+                            <button class="btn" onclick="startScanner()" style="margin-top: 15px;">
+                                <i class="fas fa-camera nsm-icon small"></i> Enable Camera
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="scanner-controls">
+                        <button class="btn" onclick="startScanner()" id="startBtn">
+                            <i class="fas fa-qrcode nsm-icon small"></i> Start Scanner
+                        </button>
+                        <button class="btn btn-danger" onclick="stopScanner()" id="stopBtn" style="display: none;">
+                            <i class="fas fa-stop nsm-icon small"></i> Stop Scanner
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="color: var(--text-secondary); font-size: 11px; margin-top: 15px;">
+                    Hold steady for 2 seconds for best results
+                </div>
+            </div>
+        </div>
+        
+        <!-- History Tab -->
+        <div id="history" class="tab-content">
+            <div class="history-header">
+                <div class="history-title-section">
+                    <h2><i class="fas fa-history nsm-icon"></i> Attendance History</h2>
+                </div>
+                <p style="color: var(--text-secondary); font-size: 13px;">Your complete attendance records</p>
+                
+                <!-- Date Filter -->
+                <div class="history-filters">
+                    <input type="date" id="dateFilter" class="filter-select" onchange="filterAttendanceHistory()">
+                    <select id="typeFilter" class="filter-select" onchange="filterAttendanceHistory()">
+                        <option value="">All Types</option>
+                        <option value="clock_in">Clock In</option>
+                        <option value="clock_out">Clock Out</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Summary Table -->
+            <div class="summary-section">
+                <h3><i class="fas fa-chart-bar nsm-icon"></i> Attendance Summary</h3>
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Clock In</th>
+                            <th>Clock Out</th>
+                            <th>Hours</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                        <!-- Summary rows will be generated here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Enhanced Tabular Attendance History for Mobile -->
+            <div class="attendance-table-container">
+                <table class="attendance-table" id="attendanceTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Time</th>
+                            <th>Department</th>
+                            <th>Location</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTableBody">
+                        <!-- Attendance records will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Payment Tab -->
+        <div id="payment" class="tab-content">
+            <h2><i class="fas fa-university nsm-icon"></i> Service Activation</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 13px;">Activate service to use the attendance system</p>
+            
+            <div class="subscription-card">
+                <h3><i class="fas fa-id-card nsm-icon"></i> Current Service Status</h3>
+                
+                <div class="subscription-info">
+                    <div class="subscription-row">
+                        <span>Service:</span>
+                        <span><strong>NSPM Attendance System</strong></span>
+                    </div>
+                    <div class="subscription-row">
+                        <span>Price:</span>
+                        <span><strong>₦1,000 / Month</strong></span>
+                    </div>
+                    <div class="subscription-row">
+                        <span>Status:</span>
+                        <span id="subscriptionStatus" style="color: var(--warning);"><strong id="statusValue">Not Active</strong></span>
+                    </div>
+                    <div class="subscription-row">
+                        <span>Expires:</span>
+                        <span id="subscriptionExpiry"><strong id="expiresValue">--/--/----</strong></span>
+                    </div>
+                </div>
+                
+                <h4 style="margin-top: 15px;">Payment Method</h4>
+                <div class="payment-options">
+                    <!-- Paystack payment option -->
+                    <div class="payment-option" onclick="showPaymentForm('paystack')">
+                        <div class="payment-icon"><i class="fas fa-university"></i></div>
+                        <div>
+                            <div><strong>Pay with Paystack</strong></div>
+                            <div style="font-size: 11px; color: var(--text-secondary);">Secure Paystack payment (Cards, Bank Transfer, USSD)</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 15px; font-size: 11px; color: var(--text-secondary);">
+                    Secure Payment Powered by Paystack
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Tab -->
+        <div id="settings" class="tab-content">
+            <div class="settings-section">
+                <h2><i class="fas fa-cog nsm-icon"></i> Settings</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 13px;">Customize your app experience</p>
+                
+                <div class="settings-card">
+                    <div class="settings-group">
+                        <h3>Account Information</h3>
+                        <div class="subscription-info">
+                            <div class="subscription-row">
+                                <span>Staff ID:</span>
+                                <span id="settingsStaffId">--</span>
+                            </div>
+                            <div class="subscription-row">
+                                <span>Department:</span>
+                                <span id="settingsDepartment">--</span>
+                            </div>
+                            <div class="subscription-row">
+                                <span>Designation:</span>
+                                <span id="settingsDesignation">--</span>
+                            </div>
+                            <div class="subscription-row">
+                                <span>Service Status:</span>
+                                <span id="settingsServiceStatus" style="color: var(--warning);">Inactive</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Logout Section -->
+                    <div class="logout-section">
+                        <h3>Account</h3>
+                        <button class="logout-btn-settings" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Bottom Navigation -->
+    <div class="bottom-nav" id="bottomNav" style="display: none;">
+        <button class="nav-item active" onclick="switchTab('scanner')">
+            <i class="fas fa-qrcode"></i>
+            <span class="nav-label">Scan</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('history')">
+            <i class="fas fa-history"></i>
+            <span class="nav-label">History</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('payment')">
+            <i class="fas fa-university"></i>
+            <span class="nav-label">Activate</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('settings')">
+            <i class="fas fa-cog"></i>
+            <span class="nav-label">Settings</span>
+        </button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p id="loadingMessage">Processing...</p>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="result-modal" id="resultModal" style="display: none;">
+        <div class="result-content" id="resultContent">
+            <div class="result-icon" id="resultIcon"></div>
+            <h3 id="resultTitle">Success</h3>
+            <p id="resultMessage" style="margin: 15px 0;"></p>
+            <button class="btn" onclick="closeResult()">
+                <span>Continue</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="new-department-modal" id="paymentModal" style="display: none;">
+        <div class="new-department-content">
+            <h2><i class="fas fa-university nsm-icon"></i> Complete Payment</h2>
+            <p style="color: var(--text-secondary); margin: 8px 0 15px; font-size: 13px;">Activate your attendance service</p>
+            
+            <!-- Paystack Payment Form -->
+            <div id="paystackPaymentForm" class="payment-form">
+                <div class="form-group">
+                    <label for="paystackEmail">Email Address</label>
+                    <input type="email" id="paystackEmail" placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="paystackPhone">Phone Number (Optional)</label>
+                    <input type="tel" id="paystackPhone" placeholder="+2348012345678">
+                </div>
+                
+                <button class="paystack-button" onclick="processPaystackPayment()">
+                    <i class="fas fa-university nsm-icon small"></i> Pay ₦1,000 with Paystack
+                </button>
+                <div style="text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-secondary);">
+                    You'll be redirected to Paystack for secure payment
+                </div>
+            </div>
+            
+            <!-- Amount Display -->
+            <div class="subscription-info" style="margin: 20px 0;">
+                <div class="subscription-row">
+                    <span>Service:</span>
+                    <span><strong>NSPM Attendance System</strong></span>
+                </div>
+                <div class="subscription-row">
+                    <span>Duration:</span>
+                    <span><strong>1 Month</strong></span>
+                </div>
+                <div class="subscription-row">
+                    <span>Amount:</span>
+                    <span><strong>₦1,000 NGN</strong></span>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button class="btn btn-secondary" onclick="closePaymentModal()">
+                    <span>Cancel</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =============================================
+        // APPLICATION STATE
+        // =============================================
+        
+        let currentUser = null;
+        let users = JSON.parse(localStorage.getItem('nspmUsers')) || [];
+        
+        // Staff data for main app
+        let staffDepartments = [];
+        let attendanceRecords = [];
+        let videoStream = null;
+        let scanInterval = null;
+        let isScannerActive = false;
+        let currentLanguage = 'en';
+        
+        // DUPLICATE PROTECTION VARIABLES
+        let lastScannedCode = null;
+        let scanCooldown = false;
+
+        // Payment variables
+        let currentPaymentMethod = null;
+        const SUBSCRIPTION_PRICE = 1000; // ₦1000 Naira per month
+        const SUBSCRIPTION_DURATION = 1; // Month
+
+        // Paystack configuration
+        const PAYSTACK_PUBLIC_KEY = 'pk_live_54247d3182c251b3d9509ef2bff79157e3061edb';
+        
+        // Track if payment success message has been shown
+        let paymentSuccessShown = false;
+
+        // =============================================
+        // PAYSTACK PAYMENT FUNCTION - ₦1000
+        // =============================================
+        async function processPaystackPayment() {
+            const email = document.getElementById('paystackEmail').value.trim();
+            
+            if (!email) {
+                showResult('error', 'Missing Information', 'Please enter your email address.');
+                return;
+            }
+            
+            // Validate email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showResult('error', 'Invalid Email', 'Please enter a valid email address.');
+                return;
+            }
+            
+            showLoading('Opening payment gateway...');
+            
+            try {
+                // Generate unique reference
+                const reference = 'NSPM-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                
+                // Store reference for verification
+                localStorage.setItem('pendingPaymentRef', reference);
+                
+                // Create Paystack payment handler - ₦1000
+                const handler = PaystackPop.setup({
+                    key: PAYSTACK_PUBLIC_KEY,
+                    email: email,
+                    amount: SUBSCRIPTION_PRICE * 100, // ₦1000 in kobo (1000 * 100 = 100,000 kobo)
+                    currency: 'NGN', // Nigerian Naira currency
+                    ref: reference,
+                    metadata: {
+                        staffId: currentUser?.userId || 'unknown',
+                        staffName: currentUser?.name || 'unknown',
+                        product: 'NSPM Attendance System - 1 Month',
+                        amountNGN: SUBSCRIPTION_PRICE
+                    },
+                    callback: function(response) {
+                        // Payment successful
+                        hideLoading();
+                        console.log('Payment successful:', response);
+                        
+                        // Verify payment
+                        verifyPayment(response.reference);
+                    },
+                    onClose: function() {
+                        hideLoading();
+                        console.log('Payment window closed.');
+                        showResult('info', 'Payment Cancelled', 'Payment was cancelled. You can try again.');
+                    }
+                });
+                
+                handler.openIframe();
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Payment error:', error);
+                showResult('error', 'Payment Error', 'Failed to process payment. Please try again.');
+            }
+        }
+
+        // Verify payment after success
+        async function verifyPayment(reference) {
+            showLoading('Verifying payment...');
+            
+            try {
+                // Simple verification
+                const paymentVerified = await simplePaymentVerification(reference);
+                
+                if (paymentVerified) {
+                    // Update user subscription to ACTIVE
+                    if (currentUser) {
+                        // Calculate expiry date (1 month from now)
+                        const expiryDate = new Date();
+                        expiryDate.setMonth(expiryDate.getMonth() + 1);
+                        
+                        currentUser.subscription = {
+                            type: 'active',
+                            status: 'active',
+                            expiry: expiryDate.toISOString(),
+                            lastPaymentDate: new Date().toISOString(),
+                            lastPaymentId: reference,
+                            lastPaymentMethod: 'paystack',
+                            paymentAmount: SUBSCRIPTION_PRICE,
+                            durationMonths: 1
+                        };
+                        
+                        // Save to localStorage
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        
+                        // Clear pending reference
+                        localStorage.removeItem('pendingPaymentRef');
+                        
+                        // Update UI
+                        updateSubscriptionUI();
+                        updateClockBanner();
+                        enableScanner();
+                        
+                        hideLoading();
+                        showResult('success', '🎉 Payment Successful!', 
+                            'Your ₦1,000 payment has been confirmed!<br>' +
+                            'Your attendance service is now active for 1 month.<br>' +
+                            'Transaction ID: ' + reference);
+                            
+                        // Set flag to prevent showing again
+                        paymentSuccessShown = true;
+                        localStorage.setItem('paymentSuccessShown', 'true');
+                        
+                        // Close payment modal
+                        closePaymentModal();
+                    }
+                } else {
+                    hideLoading();
+                    showResult('error', 'Verification Failed', 
+                        'Payment verification failed. Please contact support with reference: ' + reference);
+                }
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Verification error:', error);
+                showResult('error', 'Verification Error', 
+                    'Could not verify payment. Please check your internet connection.');
+            }
+        }
+
+        // Simple payment verification
+        async function simplePaymentVerification(reference) {
+            try {
+                // For now, we'll assume payment is successful
+                return true;
+            } catch (error) {
+                console.error('Verification failed:', error);
+                return false;
+            }
+        }
+
+        // =============================================
+        // SERVICE STATUS MANAGEMENT
+        // =============================================
+
+        function checkServiceStatus() {
+            if (!currentUser.subscription) {
+                return { isValid: false, isActive: false, daysLeft: 0 };
+            }
+            
+            if (currentUser.subscription.type === 'active') {
+                const expiryDate = new Date(currentUser.subscription.expiry);
+                const today = new Date();
+                
+                // Check if subscription is still valid
+                const timeDiff = expiryDate - today;
+                const daysLeft = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+                
+                return {
+                    isValid: daysLeft > 0,
+                    isActive: true,
+                    daysLeft: daysLeft,
+                    expiryDate: expiryDate
+                };
+            }
+            
+            return { isValid: false, isActive: false, daysLeft: 0 };
+        }
+
+        function updateClockBanner() {
+            const clockBanner = document.getElementById('clockBanner');
+            const serviceStatus = checkServiceStatus();
+            
+            if (!clockBanner) return;
+            
+            if (!serviceStatus.isActive) {
+                // Service not active
+                clockBanner.style.display = 'block';
+                clockBanner.classList.remove('expired');
+                document.getElementById('clockStatusTitle').textContent = 'Service Required';
+                document.getElementById('clockStatusMessage').textContent = 'Please activate service to use the attendance system';
+                
+                // Disable scanner
+                disableScanner();
+            } else if (!serviceStatus.isValid) {
+                // Service expired
+                clockBanner.style.display = 'block';
+                clockBanner.classList.add('expired');
+                document.getElementById('clockStatusTitle').textContent = 'Service Expired';
+                document.getElementById('clockStatusMessage').textContent = 'Your service has expired. Please renew to continue';
+                
+                // Disable scanner
+                disableScanner();
+            } else {
+                // Service active
+                clockBanner.style.display = 'none';
+                
+                // Enable scanner
+                enableScanner();
+                updateTodayStatus();
+            }
+            
+            updateSubscriptionUI();
+        }
+
+        function updateTodayStatus() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = attendanceRecords.filter(record => 
+                record.date === today && record.staffId === currentUser.userId
+            );
+            
+            const clockInRecord = todayRecords.find(record => record.type === 'clock_in');
+            const clockOutRecord = todayRecords.find(record => record.type === 'clock_out');
+            
+            document.getElementById('todayStatus').textContent = 
+                clockInRecord && !clockOutRecord ? 'Clocked In' : 
+                clockInRecord && clockOutRecord ? 'Clocked Out' : 'Not Clocked In';
+            
+            document.getElementById('todayStatus').className = 
+                clockInRecord && !clockOutRecord ? 'clock-status-value clocked-in' : 
+                clockInRecord && clockOutRecord ? 'clock-status-value clocked-out' : 'clock-status-value';
+            
+            document.getElementById('lastClockIn').textContent = 
+                clockInRecord ? formatTime(clockInRecord.time) : '--:--';
+            
+            document.getElementById('lastClockOut').textContent = 
+                clockOutRecord ? formatTime(clockOutRecord.time) : '--:--';
+        }
+
+        function disableScanner() {
+            // Show scanner disabled overlay
+            const scannerDisabled = document.getElementById('scannerDisabled');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (scannerDisabled) {
+                scannerDisabled.style.display = 'flex';
+                scannerDisabled.querySelector('#scannerDisabledTitle').textContent = 'Scanner Locked';
+                scannerDisabled.querySelector('#scannerDisabledMessage').textContent = 'Please activate service to use the QR scanner.';
+            }
+            
+            if (startBtn) startBtn.style.display = 'none';
+            if (stopBtn) stopBtn.style.display = 'none';
+            
+            // Stop scanner if it's running
+            stopScanner();
+        }
+
+        function enableScanner() {
+            // Hide scanner disabled overlay
+            const scannerDisabled = document.getElementById('scannerDisabled');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (scannerDisabled) {
+                scannerDisabled.style.display = 'none';
+            }
+            
+            if (startBtn) startBtn.style.display = 'block';
+            if (stopBtn) stopBtn.style.display = 'none';
+            
+            // Also make sure scanner is enabled by checking service status
+            const serviceStatus = checkServiceStatus();
+            if (serviceStatus.isValid && serviceStatus.isActive) {
+                if (scannerDisabled) scannerDisabled.style.display = 'none';
+                if (startBtn) startBtn.style.display = 'block';
+            }
+        }
+
+        function canUserScan() {
+            const serviceStatus = checkServiceStatus();
+            return serviceStatus.isValid && serviceStatus.isActive;
+        }
+
+        // =============================================
+        // FIREBASE AUTH INTEGRATION
+        // =============================================
+        
+        async function handleFirebaseSignup(userData) {
+            try {
+                // Create a clean email from the staff ID
+                const cleanEmail = userData.userId.replace(/\//g, '.') + '@nspm.gov.ng';
+                
+                // Create user in Firebase Authentication with clean email
+                const userCredential = await auth.createUserWithEmailAndPassword(
+                    cleanEmail, 
+                    userData.password
+                );
+                
+                const firebaseUser = userCredential.user;
+                console.log("🔥 Firebase User Created:", firebaseUser.uid);
+                
+                // Save user data to Firebase Database
+                await database.ref('staff/' + firebaseUser.uid).set({
+                    ...userData,
+                    firebaseUid: firebaseUser.uid,
+                    cleanEmail: cleanEmail,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                return firebaseUser;
+            } catch (error) {
+                console.error("Firebase Signup Error:", error);
+                throw error;
+            }
+        }
+
+        async function handleFirebaseLogin(staffId, password) {
+            try {
+                // Convert staff ID to clean email format (same as signup)
+                const cleanEmail = staffId.replace(/\//g, '.') + '@nspm.gov.ng';
+                
+                const userCredential = await auth.signInWithEmailAndPassword(cleanEmail, password);
+                console.log("🔥 Firebase User Logged In:", userCredential.user.uid);
+                return userCredential.user;
+            } catch (error) {
+                console.error("Firebase Login Error:", error);
+                throw error;
+            }
+        }
+
+        function setupFirebaseAuthListener() {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    console.log("🔥 Firebase Auth State: User is signed in", user.uid);
+                } else {
+                    console.log("🔥 Firebase Auth State: User is signed out");
+                }
+            });
+        }
+
+        // =============================================
+        // MAIN APP INITIALIZATION
+        // =============================================
+
+        function initApp() {
+            setupFirebaseAuthListener();
+            handlePasswordResetConfirmation();
+            
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        showMainApp();
+                    } else {
+                        currentUser = null;
+                        localStorage.removeItem('currentUser');
+                        showAuth();
+                        showResult('info', 'Session Expired', 
+                            'Your session has expired. Please login again with your current password.');
+                    }
+                });
+            } else {
+                showAuth();
+            }
+            
+            setupEventListeners();
+            
+            document.getElementById('clearCacheLinkContainer').style.display = 'none';
+            
+            // Check if payment success was shown before
+            const successShown = localStorage.getItem('paymentSuccessShown');
+            paymentSuccessShown = successShown === 'true';
+        }
+
+        function setupEventListeners() {
+            // Auth form toggles
+            document.getElementById('loginToggle').addEventListener('click', function() {
+                showLoginForm();
+            });
+            
+            document.getElementById('signupToggle').addEventListener('click', function() {
+                showSignupForm();
+            });
+            
+            // Forgot password link
+            document.getElementById('forgotPasswordLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                showForgotPasswordForm();
+            });
+            
+            // Back to login link
+            document.getElementById('backToLoginLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                showLoginForm();
+            });
+            
+            // Clear cache link
+            document.getElementById('clearCacheLink').addEventListener('click', function(e) {
+                e.preventDefault();
+                clearAuthCache();
+            });
+            
+            // Login form submission
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleLogin();
+            });
+            
+            // Signup form submission
+            document.getElementById('signupForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleSignup();
+            });
+            
+            // Forgot password form submission
+            document.getElementById('forgotPasswordForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                handleForgotPassword();
+            });
+            
+            // Real-time validation
+            setupRealTimeValidation();
+            
+            // Theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        }
+
+        // Password Strength Functions
+        function checkPasswordStrength(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                symbol: /[^A-Za-z0-9]/.test(password)
+            };
+            
+            const validRequirements = Object.values(requirements).filter(Boolean).length;
+            const totalRequirements = Object.keys(requirements).length;
+            const strengthPercentage = (validRequirements / totalRequirements) * 100;
+            
+            let strengthLevel = 'weak';
+            let strengthLabel = 'Weak';
+            
+            if (strengthPercentage >= 80) {
+                strengthLevel = 'strong';
+                strengthLabel = 'Strong';
+            } else if (strengthPercentage >= 60) {
+                strengthLevel = 'good';
+                strengthLabel = 'Good';
+            } else if (strengthPercentage >= 40) {
+                strengthLevel = 'fair';
+                strengthLabel = 'Fair';
+            }
+            
+            return {
+                level: strengthLevel,
+                label: strengthLabel,
+                percentage: strengthPercentage,
+                requirements: requirements
+            };
+        }
+
+        function updatePasswordStrength(password) {
+            const strength = checkPasswordStrength(password);
+            const fillElement = document.getElementById('strengthFill');
+            const labelElement = document.getElementById('strengthLabel');
+            const valueElement = document.getElementById('strengthValue');
+            
+            if (!fillElement || !labelElement || !valueElement) {
+                return false;
+            }
+            
+            fillElement.className = 'strength-fill ' + strength.level;
+            
+            labelElement.textContent = 'Password strength';
+            valueElement.textContent = strength.label;
+            valueElement.style.color = getStrengthColor(strength.level);
+            
+            updateRequirementIndicators(strength.requirements);
+            
+            return strength.percentage === 100;
+        }
+
+        function getStrengthColor(level) {
+            switch(level) {
+                case 'weak': return '#dc3545';
+                case 'fair': return '#ffc107';
+                case 'good': return '#17a2b8';
+                case 'strong': return '#28a745';
+                default: return '#888';
+            }
+        }
+
+        function updateRequirementIndicators(requirements) {
+            const requirementIds = {
+                length: 'reqLength',
+                uppercase: 'reqUppercase',
+                lowercase: 'reqLowercase',
+                number: 'reqNumber',
+                symbol: 'reqSymbol'
+            };
+            
+            Object.keys(requirements).forEach(req => {
+                const element = document.getElementById(requirementIds[req]);
+                if (element) {
+                    if (requirements[req]) {
+                        element.classList.remove('invalid');
+                        element.classList.add('valid');
+                    } else {
+                        element.classList.remove('valid');
+                        element.classList.add('invalid');
+                    }
+                }
+            });
+        }
+
+        function setupRealTimeValidation() {
+            // Login form validation
+            const loginId = document.getElementById('loginId');
+            const loginPassword = document.getElementById('loginPassword');
+            
+            if (loginId) {
+                loginId.addEventListener('input', function() {
+                    validateField(this, 'loginIdError', this.value.trim() !== '');
+                });
+            }
+            
+            if (loginPassword) {
+                loginPassword.addEventListener('input', function() {
+                    validateField(this, 'loginPasswordError', this.value.trim() !== '');
+                });
+            }
+            
+            // Signup form validation
+            const fullName = document.getElementById('fullName');
+            const email = document.getElementById('email');
+            const userId = document.getElementById('userId');
+            const department = document.getElementById('department');
+            const designation = document.getElementById('designation');
+            const signupPassword = document.getElementById('signupPassword');
+            const confirmPassword = document.getElementById('confirmPassword');
+            
+            if (fullName) {
+                fullName.addEventListener('input', function() {
+                    validateField(this, 'fullNameError', this.value.trim() !== '');
+                });
+            }
+            
+            if (email) {
+                email.addEventListener('input', function() {
+                    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+                    validateField(this, 'emailError', isValid);
+                });
+            }
+            
+            if (userId) {
+                userId.addEventListener('input', function() {
+                    validateField(this, 'userIdError', this.value.trim() !== '');
+                });
+            }
+            
+            if (department) {
+                department.addEventListener('change', function() {
+                    validateField(this, 'departmentError', this.value.trim() !== '');
+                });
+            }
+            
+            if (designation) {
+                designation.addEventListener('input', function() {
+                    validateField(this, 'designationError', this.value.trim() !== '');
+                });
+            }
+            
+            // Password strength validation
+            if (signupPassword) {
+                signupPassword.addEventListener('input', function() {
+                    const password = this.value;
+                    const isValid = updatePasswordStrength(password);
+                    
+                    validateField(this, 'signupPasswordError', isValid);
+                    
+                    if (confirmPassword && confirmPassword.value) {
+                        validateField(confirmPassword, 'confirmPasswordError', confirmPassword.value === password);
+                    }
+                });
+            }
+            
+            if (confirmPassword) {
+                confirmPassword.addEventListener('input', function() {
+                    const password = signupPassword ? signupPassword.value : '';
+                    validateField(this, 'confirmPasswordError', this.value === password);
+                });
+            }
+            
+            // Forgot password form validation
+            const forgotEmail = document.getElementById('forgotEmail');
+            if (forgotEmail) {
+                forgotEmail.addEventListener('input', function() {
+                    const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+                    validateField(this, 'forgotEmailError', isValid);
+                });
+            }
+        }
+
+        function validateField(field, errorId, isValid) {
+            const errorElement = document.getElementById(errorId);
+            
+            if (!field || !errorElement) return isValid;
+            
+            if (isValid) {
+                field.parentElement.classList.remove('error');
+                errorElement.style.display = 'none';
+                errorElement.textContent = '';
+            } else {
+                field.parentElement.classList.add('error');
+                errorElement.style.display = 'block';
+            }
+            
+            return isValid;
+        }
+
+        function showLoginForm() {
+            document.getElementById('loginForm').classList.add('active');
+            document.getElementById('signupForm').classList.remove('active');
+            document.getElementById('forgotPasswordForm').classList.remove('active');
+            document.getElementById('loginToggle').classList.add('active');
+            document.getElementById('signupToggle').classList.remove('active');
+        }
+
+        function showSignupForm() {
+            document.getElementById('signupForm').classList.add('active');
+            document.getElementById('loginForm').classList.remove('active');
+            document.getElementById('forgotPasswordForm').classList.remove('active');
+            document.getElementById('signupToggle').classList.add('active');
+            document.getElementById('loginToggle').classList.remove('active');
+        }
+
+        function showForgotPasswordForm() {
+            document.getElementById('forgotPasswordForm').classList.add('active');
+            document.getElementById('loginForm').classList.remove('active');
+            document.getElementById('signupForm').classList.remove('active');
+            document.getElementById('loginToggle').classList.remove('active');
+            document.getElementById('signupToggle').classList.remove('active');
+        }
+
+        async function handleLogin() {
+            const staffId = document.getElementById('loginId').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            const isIdValid = validateField(document.getElementById('loginId'), 'loginIdError', staffId.trim() !== '');
+            const isPasswordValid = validateField(document.getElementById('loginPassword'), 'loginPasswordError', password.trim() !== '');
+            
+            if (!isIdValid || !isPasswordValid) {
+                showResult('error', 'Validation Error', 'Please fill in all required fields correctly.');
+                return;
+            }
+            
+            showLoading('Signing in...');
+            
+            try {
+                const user = users.find(u => u.userId === staffId);
+                
+                if (!user) {
+                    hideLoading();
+                    showResult('error', 'Login Failed', 'Invalid staff ID or password. Please try again.');
+                    return;
+                }
+                
+                await handleFirebaseLogin(staffId, password);
+                loginUser(user);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Login error:", error);
+                
+                if (error.code === 'auth/wrong-password') {
+                    showResult('error', 'Login Failed', 
+                        'The password is incorrect. If you recently reset your password, please use the new password.');
+                } else if (error.code === 'auth/user-not-found') {
+                    showResult('error', 'Login Failed', 'No account found with these credentials.');
+                } else if (error.code === 'auth/too-many-requests') {
+                    showResult('error', 'Login Failed', 'Too many failed attempts. Please try again later.');
+                } else {
+                    showResult('error', 'Login Failed', 'An error occurred during login. Please try again.');
+                }
+            }
+        }
+
+        async function handleSignup() {
+            const name = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const userId = document.getElementById('userId').value;
+            const department = document.getElementById('department').value;
+            const designation = document.getElementById('designation').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const agreeTerms = document.getElementById('agreeTerms').checked;
+            
+            const isNameValid = validateField(document.getElementById('fullName'), 'fullNameError', name.trim() !== '');
+            const isEmailValid = validateField(document.getElementById('email'), 'emailError', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+            const isUserIdValid = validateField(document.getElementById('userId'), 'userIdError', userId.trim() !== '');
+            const isDepartmentValid = validateField(document.getElementById('department'), 'departmentError', department.trim() !== '');
+            const isDesignationValid = validateField(document.getElementById('designation'), 'designationError', designation.trim() !== '');
+            
+            const isPasswordValid = updatePasswordStrength(password);
+            validateField(document.getElementById('signupPassword'), 'signupPasswordError', isPasswordValid);
+            
+            const isConfirmPasswordValid = validateField(document.getElementById('confirmPassword'), 'confirmPasswordError', password === confirmPassword);
+            const isTermsValid = validateField(document.getElementById('agreeTerms'), 'termsError', agreeTerms);
+            
+            if (!isNameValid || !isEmailValid || !isUserIdValid || !isDepartmentValid || 
+                !isDesignationValid || !isPasswordValid || !isConfirmPasswordValid || !isTermsValid) {
+                showResult('error', 'Validation Error', 'Please fill in all required fields correctly.');
+                return;
+            }
+            
+            if (users.find(u => u.email === email)) {
+                showResult('error', 'Registration Failed', 'An account with this email already exists.');
+                return;
+            }
+            
+            if (users.find(u => u.userId === userId)) {
+                showResult('error', 'Registration Failed', 'An account with this staff ID already exists.');
+                return;
+            }
+            
+            showLoading('Creating your account...');
+            
+            try {
+                const userData = {
+                    id: 'STAFF' + (users.length + 1001),
+                    name: name,
+                    email: email,
+                    password: password,
+                    userId: userId,
+                    department: department,
+                    designation: designation,
+                    role: 'staff',
+                    subscription: null // No subscription initially
+                };
+                
+                const firebaseUser = await handleFirebaseSignup(userData);
+                userData.firebaseUid = firebaseUser.uid;
+                
+                users.push(userData);
+                localStorage.setItem('nspmUsers', JSON.stringify(users));
+                
+                loginUser(userData);
+                hideLoading();
+                
+                showResult('success', 'Account Created!', 
+                    'Your staff account has been created successfully. Welcome to NSPM SmartClock!');
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Registration Error:", error);
+                
+                let errorMessage = 'Registration failed. Please try again.';
+                if (error.code === 'auth/email-already-in-use') {
+                    errorMessage = 'Email already registered.';
+                } else if (error.code === 'auth/weak-password') {
+                    errorMessage = 'Password is too weak. Please use a stronger password.';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorMessage = 'Invalid email address.';
+                } else if (error.code === 'auth/network-request-failed') {
+                    errorMessage = 'Network error. Please check your connection and try again.';
+                }
+                
+                showResult('error', 'Registration Failed', errorMessage);
+            }
+        }
+
+        async function handleForgotPassword() {
+            const email = document.getElementById('forgotEmail').value.trim();
+            
+            const isEmailValid = validateField(
+                document.getElementById('forgotEmail'), 
+                'forgotEmailError', 
+                /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+            );
+            
+            if (!isEmailValid) {
+                showResult('error', 'Validation Error', 'Please enter a valid email address.');
+                return;
+            }
+            
+            showLoading('Sending reset instructions...');
+            
+            try {
+                console.log("Sending password reset email to:", email);
+                await auth.sendPasswordResetEmail(email);
+                
+                hideLoading();
+                
+                console.log("Password reset email sent successfully");
+                showResult('success', 
+                    'Check Your Email', 
+                    'Password reset instructions have been sent to your email address. ' +
+                    'Please check your inbox and spam folder.'
+                );
+                
+                setTimeout(() => {
+                    showLoginForm();
+                }, 3000);
+                
+            } catch (error) {
+                hideLoading();
+                console.error("Password reset error:", error);
+                
+                let errorMessage = 'Failed to send reset email. ';
+                
+                switch (error.code) {
+                    case 'auth/user-not-found':
+                        errorMessage += 'No account found with this email address.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage += 'Please enter a valid email address.';
+                        break;
+                    case 'auth/too-many-requests':
+                        errorMessage += 'Too many reset attempts. Please try again later.';
+                        break;
+                    case 'auth/network-request-failed':
+                        errorMessage += 'Network error. Please check your connection.';
+                        break;
+                    default:
+                        errorMessage += 'Please try again.';
+                }
+                
+                showResult('error', 'Password Reset Failed', errorMessage);
+            }
+        }
+
+        function showLoading(message = 'Processing...') {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingMessage = document.getElementById('loadingMessage');
+            
+            if (loadingOverlay && loadingMessage) {
+                loadingMessage.textContent = message;
+                loadingOverlay.style.display = 'flex';
+            }
+        }
+
+        function hideLoading() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+            }
+        }
+
+        function loginUser(user) {
+            currentUser = user;
+            
+            // Clear any pending payment reference on login
+            localStorage.removeItem('pendingPaymentRef');
+            localStorage.removeItem('paymentSuccessShown');
+            
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            
+            hideLoading();
+            showMainApp();
+            initializeMainApp();
+        }
+        
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                stopScanner();
+                
+                auth.signOut().then(() => {
+                    console.log("User signed out from Firebase");
+                }).catch((error) => {
+                    console.error("Firebase sign out error:", error);
+                });
+                
+                currentUser = null;
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('paymentSuccessShown');
+                showAuth();
+                
+                document.getElementById('loginForm').reset();
+                document.getElementById('signupForm').reset();
+                document.getElementById('forgotPasswordForm').reset();
+                
+                document.querySelectorAll('.error-message').forEach(el => {
+                    el.style.display = 'none';
+                });
+                document.querySelectorAll('.input-with-icon').forEach(el => {
+                    el.classList.remove('error');
+                });
+                
+                const strengthFill = document.getElementById('strengthFill');
+                const strengthValue = document.getElementById('strengthValue');
+                if (strengthFill) strengthFill.className = 'strength-fill';
+                if (strengthValue) strengthValue.textContent = '';
+                document.querySelectorAll('.requirement').forEach(el => {
+                    el.classList.remove('valid');
+                    el.classList.add('invalid');
+                });
+            }
+        }
+        
+        function showAuth() {
+            document.getElementById('authSection').style.display = 'flex';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('bottomNav').style.display = 'none';
+            document.getElementById('clearCacheLinkContainer').style.display = 'none';
+        }
+        
+        function showMainApp() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('bottomNav').style.display = 'flex';
+            document.getElementById('clearCacheLinkContainer').style.display = 'block';
+            
+            if (currentUser) {
+                document.getElementById('staffName').textContent = currentUser.name;
+                document.getElementById('staffId').textContent = currentUser.userId;
+                document.getElementById('staffDepartment').textContent = currentUser.department;
+                document.getElementById('staffDesignation').textContent = currentUser.designation;
+                
+                // Update settings page
+                document.getElementById('settingsStaffId').textContent = currentUser.userId;
+                document.getElementById('settingsDepartment').textContent = currentUser.department;
+                document.getElementById('settingsDesignation').textContent = currentUser.designation;
+            }
+            
+            // Update service banner
+            updateClockBanner();
+            
+            // Reset payment success shown flag when showing main app
+            if (paymentSuccessShown) {
+                paymentSuccessShown = false;
+                localStorage.removeItem('paymentSuccessShown');
+            }
+        }
+
+        // =============================================
+        // MAIN APPLICATION FUNCTIONALITY
+        // =============================================
+
+        function initializeMainApp() {
+            console.log("🚀 Initializing NSPM App for staff:", currentUser.name);
+            loadStaffData();
+            updateClockBanner();
+            console.log("✅ NSPM App initialized for:", currentUser.name);
+        }
+
+        function loadStaffData() {
+            const userKey = `staffAttendance_${currentUser.id}`;
+            const savedRecords = localStorage.getItem(userKey);
+            
+            if (savedRecords) {
+                attendanceRecords = JSON.parse(savedRecords);
+                console.log(`📊 Loaded ${attendanceRecords.length} attendance records for staff ${currentUser.name}`);
+            }
+            
+            loadAttendanceHistory();
+            generateSummaryTable();
+            updateTodayStatus();
+        }
+
+        function saveStaffData() {
+            const userKey = `staffAttendance_${currentUser.id}`;
+            localStorage.setItem(userKey, JSON.stringify(attendanceRecords));
+        }
+
+        // UPDATED: Show different status for active service
+        function updateSubscriptionUI() {
+            const serviceStatus = checkServiceStatus();
+            
+            if (serviceStatus.isActive && serviceStatus.isValid) {
+                document.getElementById('statusValue').textContent = `Active (${serviceStatus.daysLeft} days left)`;
+                document.getElementById('subscriptionStatus').style.color = 'var(--success)';
+                document.getElementById('expiresValue').textContent = formatDate(serviceStatus.expiryDate);
+                document.getElementById('settingsServiceStatus').textContent = 'Active';
+                document.getElementById('settingsServiceStatus').style.color = 'var(--success)';
+            } else if (serviceStatus.isActive && !serviceStatus.isValid) {
+                document.getElementById('statusValue').textContent = 'Expired';
+                document.getElementById('subscriptionStatus').style.color = 'var(--danger)';
+                document.getElementById('expiresValue').textContent = 'Please Renew';
+                document.getElementById('settingsServiceStatus').textContent = 'Expired';
+                document.getElementById('settingsServiceStatus').style.color = 'var(--danger)';
+            } else {
+                document.getElementById('statusValue').textContent = 'Not Active';
+                document.getElementById('subscriptionStatus').style.color = 'var(--warning)';
+                document.getElementById('expiresValue').textContent = '--/--/----';
+                document.getElementById('settingsServiceStatus').textContent = 'Inactive';
+                document.getElementById('settingsServiceStatus').style.color = 'var(--warning)';
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.nav-item[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            if (tabName === 'scanner') {
+                const cameraPermission = document.getElementById('cameraPermission');
+                const video = document.getElementById('video');
+                
+                if (cameraPermission) cameraPermission.style.display = 'none';
+                if (video) video.style.display = 'none';
+                
+                if (!isScannerActive) {
+                    // Check if scanner should be enabled
+                    if (!canUserScan()) {
+                        disableScanner();
+                    } else {
+                        enableScanner();
+                    }
+                }
+            } else {
+                stopScanner();
+            }
+            
+            if (tabName === 'history') {
+                loadAttendanceHistory();
+                generateSummaryTable();
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLightMode = document.body.classList.contains('light-mode');
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.innerHTML = isLightMode ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            }
+            localStorage.setItem('darkMode', isLightMode);
+        }
+
+        function generateSummaryTable() {
+            const container = document.getElementById('summaryTableBody');
+            
+            if (!container) return;
+            
+            // Get unique dates from attendance records
+            const dates = [...new Set(attendanceRecords.map(record => record.date))].sort().reverse();
+            
+            if (dates.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No attendance records found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            dates.forEach(date => {
+                const dayRecords = attendanceRecords.filter(record => 
+                    record.date === date && record.staffId === currentUser.userId
+                );
+                
+                const clockInRecord = dayRecords.find(record => record.type === 'clock_in');
+                const clockOutRecord = dayRecords.find(record => record.type === 'clock_out');
+                
+                let hours = '--';
+                if (clockInRecord && clockOutRecord) {
+                    const clockInTime = new Date(`${date}T${clockInRecord.time}`);
+                    const clockOutTime = new Date(`${date}T${clockOutRecord.time}`);
+                    const diffHours = (clockOutTime - clockInTime) / (1000 * 60 * 60);
+                    hours = diffHours.toFixed(1);
+                }
+                
+                const status = clockInRecord && !clockOutRecord ? 'Clocked In' : 
+                              clockInRecord && clockOutRecord ? 'Clocked Out' : 'Not Clocked';
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(date)}</td>
+                    <td>${clockInRecord ? formatTime(clockInRecord.time) : '--:--'}</td>
+                    <td>${clockOutRecord ? formatTime(clockOutRecord.time) : '--:--'}</td>
+                    <td>${hours}h</td>
+                    <td>${status}</td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function loadAttendanceHistory() {
+            const container = document.getElementById('attendanceTableBody');
+            if (!container) return;
+            
+            const dateFilter = document.getElementById('dateFilter') ? document.getElementById('dateFilter').value : '';
+            const typeFilter = document.getElementById('typeFilter') ? document.getElementById('typeFilter').value : '';
+            
+            // Filter attendance records for current staff
+            let filteredRecords = attendanceRecords.filter(record => 
+                record.staffId === currentUser.userId
+            );
+            
+            if (dateFilter) {
+                filteredRecords = filteredRecords.filter(record => record.date === dateFilter);
+            }
+            
+            if (typeFilter) {
+                filteredRecords = filteredRecords.filter(record => record.type === typeFilter);
+            }
+            
+            if (filteredRecords.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No attendance records found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            filteredRecords.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(record.date)}</td>
+                    <td>${record.type === 'clock_in' ? 'Clock In' : 'Clock Out'}</td>
+                    <td>${formatTime(record.time)}</td>
+                    <td>${record.department || currentUser.department}</td>
+                    <td>${record.location || 'Main Office'}</td>
+                    <td class="action-cell">
+                        <button class="delete-record-btn" onclick="deleteAttendanceRecord('${record.id}')" title="Delete Record">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function filterAttendanceHistory() {
+            loadAttendanceHistory();
+        }
+
+        function deleteAttendanceRecord(recordId) {
+            if (confirm('Are you sure you want to delete this attendance record?')) {
+                attendanceRecords = attendanceRecords.filter(record => record.id !== recordId);
+                saveStaffData();
+                loadAttendanceHistory();
+                generateSummaryTable();
+                updateTodayStatus();
+                showResult('success', 'Record Deleted', 'Attendance record has been successfully deleted.');
+            }
+        }
+
+        async function startScanner() {
+            if (isScannerActive) return;
+            
+            // Check service status
+            if (!canUserScan()) {
+                showResult('error', 'Service Required', 'Please activate service to use the QR scanner.');
+                switchTab('payment');
+                return;
+            }
+            
+            const video = document.getElementById('video');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const cameraPermission = document.getElementById('cameraPermission');
+            const cameraDarkOverlay = document.getElementById('cameraDarkOverlay');
+            
+            try {
+                const currentStream = video.srcObject;
+                if (currentStream) {
+                    if (cameraPermission) cameraPermission.style.display = 'none';
+                    if (cameraDarkOverlay) cameraDarkOverlay.style.display = 'none';
+                    if (video) video.style.display = 'block';
+                    if (startBtn) startBtn.style.display = 'none';
+                    if (stopBtn) stopBtn.style.display = 'block';
+                    scanInterval = setInterval(scanQRCode, 500);
+                    isScannerActive = true;
+                    
+                    // Update camera container state
+                    const cameraContainer = document.querySelector('.camera-container');
+                    cameraContainer.classList.remove('camera-dark');
+                    cameraContainer.classList.add('camera-active');
+                    
+                    return;
+                }
+                
+                let constraints = { 
+                    video: { 
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                };
+                
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = videoStream;
+                
+                video.onloadedmetadata = function() {
+                    if (cameraPermission) cameraPermission.style.display = 'none';
+                    if (cameraDarkOverlay) cameraDarkOverlay.style.display = 'none';
+                    if (video) video.style.display = 'block';
+                    
+                    if (startBtn) startBtn.style.display = 'none';
+                    if (stopBtn) stopBtn.style.display = 'block';
+                    
+                    scanInterval = setInterval(scanQRCode, 500);
+                    isScannerActive = true;
+                    
+                    // Update camera container state
+                    const cameraContainer = document.querySelector('.camera-container');
+                    cameraContainer.classList.remove('camera-dark');
+                    cameraContainer.classList.add('camera-active');
+                    
+                    console.log("✅ Camera started successfully");
+                };
+                
+            } catch (err) {
+                console.error('Camera access error:', err);
+                if (cameraPermission) cameraPermission.style.display = 'flex';
+                if (cameraDarkOverlay) cameraDarkOverlay.style.display = 'none';
+                if (video) video.style.display = 'none';
+                
+                let errorMessage = 'Unable to access camera. ';
+                
+                if (err.name === 'NotAllowedError') {
+                    errorMessage += 'Please allow camera access in your browser settings.';
+                } else if (err.name === 'NotFoundError') {
+                    errorMessage += 'No camera found on your device.';
+                } else if (err.name === 'NotSupportedError') {
+                    errorMessage += 'Camera not supported on this device.';
+                } else {
+                    errorMessage += 'Please check permissions and try again.';
+                }
+                
+                showResult('error', 'Camera Error', errorMessage);
+                
+                // Show camera permission UI
+                const cameraContainer = document.querySelector('.camera-container');
+                cameraContainer.classList.add('camera-dark');
+                cameraContainer.classList.remove('camera-active');
+            }
+        }
+
+        function stopScanner() {
+            if (!isScannerActive) return;
+            
+            const video = document.getElementById('video');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const cameraPermission = document.getElementById('cameraPermission');
+            const cameraDarkOverlay = document.getElementById('cameraDarkOverlay');
+            
+            scanCooldown = false;
+            lastScannedCode = null;
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                if (video) video.srcObject = null;
+                videoStream = null;
+            }
+            
+            if (scanInterval) {
+                clearInterval(scanInterval);
+                scanInterval = null;
+            }
+            
+            if (cameraPermission) cameraPermission.style.display = 'none';
+            if (cameraDarkOverlay) cameraDarkOverlay.style.display = 'flex';
+            if (video) video.style.display = 'none';
+            
+            if (startBtn) startBtn.style.display = 'block';
+            if (stopBtn) stopBtn.style.display = 'none';
+            
+            isScannerActive = false;
+            
+            // Update camera container state
+            const cameraContainer = document.querySelector('.camera-container');
+            cameraContainer.classList.add('camera-dark');
+            cameraContainer.classList.remove('camera-active');
+            
+            console.log("🛑 Scanner stopped completely");
+        }
+
+        function scanQRCode() {
+            const video = document.getElementById('video');
+            
+            if (!video || video.readyState !== video.HAVE_ENOUGH_DATA || !isScannerActive || scanCooldown) {
+                return;
+            }
+            
+            try {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code && code.data !== lastScannedCode) {
+                    console.log("✅ QR Code detected - PROCESSING:", code.data);
+                    
+                    scanCooldown = true;
+                    lastScannedCode = code.data;
+                    
+                    processQRCode(code.data);
+                    
+                    setTimeout(() => {
+                        stopScanner();
+                    }, 1000);
+                }
+            } catch (err) {
+                console.error("❌ QR scanning error:", err);
+            }
+        }
+
+        async function processQRCode(qrData) {
+            try {
+                console.log("🔄 Processing QR code:", qrData);
+                
+                const staffId = currentUser.userId;
+                const staffName = currentUser.name;
+                
+                if (!staffId || !staffName) {
+                    throw new Error('Staff information not found');
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(qrData);
+                } catch (parseError) {
+                    throw new Error('Invalid QR code format. Please scan a valid NSPM QR code.');
+                }
+
+                if (!data.locationId || !data.department) {
+                    throw new Error('Invalid QR code: Missing required fields');
+                }
+
+                const today = new Date().toISOString().split('T')[0];
+                const currentTime = new Date().getTime();
+                
+                // Check today's records to determine if we should clock in or out
+                const todayRecords = attendanceRecords.filter(record => 
+                    record.staffId === staffId && 
+                    record.date === today
+                );
+                
+                const hasClockIn = todayRecords.some(record => record.type === 'clock_in');
+                const hasClockOut = todayRecords.some(record => record.type === 'clock_out');
+                
+                let recordType = 'clock_in';
+                if (hasClockIn && !hasClockOut) {
+                    recordType = 'clock_out';
+                } else if (hasClockIn && hasClockOut) {
+                    throw new Error('You have already completed your attendance for today.');
+                }
+                
+                // Save to Firebase
+                const attendanceRef = database.ref(`nspmAttendance/${today}`);
+                const recordKey = `${staffId.replace(/\//g, '_')}_${recordType}_${currentTime}`;
+                
+                const attendanceRecord = {
+                    staffId: staffId,
+                    staffName: staffName,
+                    department: data.department || currentUser.department,
+                    location: data.locationName || data.locationId,
+                    type: recordType,
+                    date: today,
+                    time: new Date().toLocaleTimeString(),
+                    timestamp: currentTime
+                };
+                
+                await attendanceRef.child(recordKey).set(attendanceRecord);
+
+                console.log("✅ Attendance recorded successfully!");
+                
+                // Save locally
+                attendanceRecord.id = recordKey;
+                attendanceRecords.unshift(attendanceRecord);
+                saveStaffData();
+                
+                showResult('success', `${recordType === 'clock_in' ? '✅ Clocked In' : '🔄 Clocked Out'}`, 
+                    `${recordType === 'clock_in' ? 'Successfully clocked in!' : 'Successfully clocked out!'}<br><br>
+                     Staff: ${staffName} (${staffId})<br>
+                     Department: ${data.department || currentUser.department}<br>
+                     Time: ${formatTime(currentTime)}<br>
+                     Location: ${data.locationName || data.locationId}`);
+                     
+                loadAttendanceHistory();
+                generateSummaryTable();
+                updateTodayStatus();
+                   
+            } catch (error) {
+                console.error("❌ QR processing error:", error);
+                scanCooldown = false;
+                lastScannedCode = null;
+                showResult('error', 'Scan Failed', error.message);
+            }
+        }
+
+        function showPaymentForm(method) {
+            currentPaymentMethod = method;
+            document.getElementById('paymentModal').style.display = 'flex';
+            
+            const paystackEmail = document.getElementById('paystackEmail');
+            if (paystackEmail && currentUser && currentUser.email) {
+                paystackEmail.value = currentUser.email;
+            }
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+            currentPaymentMethod = null;
+        }
+
+        function formatDate(dateString) {
+            try {
+                const date = new Date(dateString);
+                const options = { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                };
+                
+                return date.toLocaleDateString('en-US', options);
+            } catch (error) {
+                return 'Invalid Date';
+            }
+        }
+
+        function formatTime(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            } catch (error) {
+                return 'Invalid Time';
+            }
+        }
+
+        function showResult(type, title, message) {
+            const modal = document.getElementById('resultModal');
+            const content = document.getElementById('resultContent');
+            const icon = document.getElementById('resultIcon');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMessage = document.getElementById('resultMessage');
+            
+            if (!modal || !content || !icon || !resultTitle || !resultMessage) return;
+            
+            content.className = `result-content ${type === 'success' ? 'result-success' : type === 'error' ? 'result-error' : ''}`;
+            
+            if (type === 'processing') {
+                icon.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                icon.innerHTML = type === 'success' ? '<i class="fas fa-check-circle"></i>' : type === 'error' ? '<i class="fas fa-times-circle"></i>' : '<i class="fas fa-info-circle"></i>';
+            }
+            
+            resultTitle.textContent = title;
+            resultMessage.innerHTML = message;
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeResult() {
+            const modal = document.getElementById('resultModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function clearAuthCache() {
+            auth.signOut();
+            
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('nspmUsers');
+            localStorage.removeItem('paymentSuccessShown');
+            localStorage.removeItem('pendingPaymentRef');
+            sessionStorage.clear();
+            
+            currentUser = null;
+            
+            showResult('success', 'Cache Cleared', 
+                'All cached login data has been cleared. Please login again.');
+            
+            showAuth();
+            
+            document.getElementById('loginForm').reset();
+            document.getElementById('signupForm').reset();
+            document.getElementById('forgotPasswordForm').reset();
+        }
+
+        function handlePasswordResetConfirmation() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const actionCode = urlParams.get('oobCode');
+            
+            if (mode === 'resetPassword' && actionCode) {
+                showResult('success', 'Password Reset Confirmed', 
+                    'Please use your new password to login');
+                
+                const newUrl = window.location.origin + window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+                
+                showLoginForm();
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            initApp();
+            
+            // Check for saved theme
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedDarkMode === 'true') {
+                document.body.classList.add('light-mode');
+                const themeToggle = document.getElementById('themeToggle');
+                if (themeToggle) {
+                    themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
